@@ -2,6 +2,7 @@ package com.zebra.jamesswinton.periodicalarmmanager;
 
 import android.app.Service;
 import android.content.Intent;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -89,9 +90,10 @@ public class SendHeartbeatService extends Service {
 
     private void logToFile() {
         // Log Results
-        File logFile = new File(getFilesDir() + File.separator + "log.txt");
+        File logFile = new File(Environment.getExternalStorageDirectory()
+                + File.separator + "PeriodicAlarmManagerTest" + File.separator + "log.txt");
         try {
-            String logText = "\nAlarm & Service Triggered @ " + getCurrentTimeHumanReadable();
+            String logText = "Alarm & Service Triggered @ " + getCurrentTimeHumanReadable() +"\n";
             FileUtils.writeStringToFile(logFile, logText, Charset.defaultCharset(), true);
         } catch (IOException e) {
             e.printStackTrace();
