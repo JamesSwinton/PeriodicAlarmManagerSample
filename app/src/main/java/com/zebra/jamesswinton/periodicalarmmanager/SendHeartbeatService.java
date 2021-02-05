@@ -1,13 +1,18 @@
 package com.zebra.jamesswinton.periodicalarmmanager;
 
+import android.annotation.SuppressLint;
 import android.app.Service;
 import android.content.Intent;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Environment;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
 
 import com.zebra.jamesswinton.periodicalarmmanager.utilities.AlarmHelper;
 import com.zebra.jamesswinton.periodicalarmmanager.utilities.NotificationHelper;
@@ -15,10 +20,8 @@ import com.zebra.jamesswinton.periodicalarmmanager.utilities.NotificationHelper;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -29,7 +32,11 @@ public class SendHeartbeatService extends Service {
     private static final String TAG = "SendHeartbeatService";
 
     // WakeLock Holder
-    PowerManager.WakeLock mWakeLock = null;
+    private PowerManager.WakeLock mWakeLock = null;
+
+    // Log File
+    private final File mLogFile = new File(Environment.getExternalStorageDirectory()
+            + File.separator + "PeriodicAlarmManagerTest" + File.separator + "log.txt");
 
     @Override
     public void onCreate() {
@@ -40,7 +47,7 @@ public class SendHeartbeatService extends Service {
         PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
                 "PeriodAlarmService::HeartbeatWakeLock");
-        mWakeLock.acquire(10*60*1000L /*10 minutes*/);
+        mWakeLock.acquire(10 * 60 * 1000L /*10 minutes*/);
 
         // Log Launch
         logToFile();
@@ -74,27 +81,58 @@ public class SendHeartbeatService extends Service {
         mWakeLock.release();
     }
 
+    @SuppressLint("MissingPermission")
     private void sendHeartbeat() {
-        Log.i(TAG, "Sending Heartbeat...");
-        Handler handler = new Handler(Looper.getMainLooper());
-        handler.postDelayed(() -> {
-            // Reset Alarm
-            Log.i(TAG, "Heartbeat sent, re-scheduling alarm");
-            AlarmHelper.setAlarm(SendHeartbeatService.this);
+        Log.i(TAG, "Preparing Heartbeat...");
 
-            // Close Service
-            Log.i(TAG, "Alarm rescheduled, qutting service");
-            stopSelf();
-        }, 5000);
+        // Acquire LocationManager
+        Log.i(TAG, "Acquiring LocationManager");
+        LocationManager locationManager = (LocationManager) getApplicationContext()
+                .getSystemService(LOCATION_SERVICE);
+
+        // Get Best Provider from Max Criteria
+        Log.i(TAG, "Getting best provider");
+        Criteria maxCriteria = new Criteria();
+        maxCriteria.setAccuracy(Criteria.ACCURACY_FINE);
+        maxCriteria.setPowerRequirement(Criteria.POWER_HIGH);
+        String bestLocationProvider = locationManager.getBestProvider(maxCriteria, true);
+
+        // Get Location
+        Log.i(TAG, "Best provider found: " + bestLocationProvider + " - Acquiring location");
+        locationManager.requestSingleUpdate(bestLocationProvider, new LocationListener() {
+            @Override
+            public void onLocationChanged(@NonNull Location location) {
+                // Log Location
+                Log.i(TAG, "Location obtained, logging location");
+                logLocationToFile(location);
+
+                // Reset Alarm
+                Log.i(TAG, "Location logged, re-scheduling alarm");
+                AlarmHelper.setAlarm(SendHeartbeatService.this);
+
+                // Close Service
+                Log.i(TAG, "Alarm rescheduled, quitting service");
+                stopSelf();
+            }
+        }, null);
     }
 
     private void logToFile() {
-        // Log Results
-        File logFile = new File(Environment.getExternalStorageDirectory()
-                + File.separator + "PeriodicAlarmManagerTest" + File.separator + "log.txt");
         try {
-            String logText = "Alarm & Service Triggered @ " + getCurrentTimeHumanReadable() +"\n";
-            FileUtils.writeStringToFile(logFile, logText, Charset.defaultCharset(), true);
+            String logText = String.format(getString(R.string.log_alarm),
+                    getCurrentTimeHumanReadable());
+            FileUtils.writeStringToFile(mLogFile, logText, Charset.defaultCharset(), true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void logLocationToFile(Location location) {
+        try {
+            double lat = location == null ? -1 : location.getLatitude();
+            double lng = location == null ? -1 : location.getLongitude();
+            String logText = String.format(getString(R.string.log_location), lat, lng);
+            FileUtils.writeStringToFile(mLogFile, logText, Charset.defaultCharset(), true);
         } catch (IOException e) {
             e.printStackTrace();
         }

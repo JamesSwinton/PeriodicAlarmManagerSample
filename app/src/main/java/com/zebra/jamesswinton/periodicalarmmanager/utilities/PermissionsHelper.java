@@ -15,7 +15,7 @@ public class PermissionsHelper {
     // Constants
     public static final int PERMISSIONS_REQUEST_CODE = 1000;
     private static final String[] PERMISSIONS = {
-            WRITE_EXTERNAL_STORAGE
+            WRITE_EXTERNAL_STORAGE, ACCESS_FINE_LOCATION
     };
 
     // Variables
@@ -31,6 +31,9 @@ public class PermissionsHelper {
                              @NonNull OnPermissionsResultListener onPermissionsResultListener) {
         this.mActivity = activity;
         this.mOnPermissionsResultListener = onPermissionsResultListener;
+    }
+
+    public void requestAllPermissions() {
         forcePermissionsUntilGranted();
     }
 

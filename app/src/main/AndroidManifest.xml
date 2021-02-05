@@ -1,20 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools"
   package="com.zebra.jamesswinton.periodicalarmmanager">
 
   <!-- Permissions -->
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.INTERNET" />
 
   <application
-    android:allowBackup="true"
+    android:allowBackup="false"
     android:icon="@mipmap/ic_launcher"
     android:label="@string/app_name"
     android:roundIcon="@mipmap/ic_launcher_round"
     android:supportsRtl="true"
     android:theme="@style/Theme.PeriodicAlarmManager"
-    android:requestLegacyExternalStorage="true">
+    android:requestLegacyExternalStorage="true"
+    android:fullBackupContent="false"
+    tools:ignore="AllowBackup">
 
     <!-- Activities -->
     <activity android:name=".MainActivity">
@@ -31,7 +36,9 @@
     <!-- Services -->
     <service android:name=".SendHeartbeatService"
       android:enabled="true"
-      android:exported="true"/>
+      android:exported="true"
+      android:foregroundServiceType="location"
+      tools:ignore="ExportedService" />
 
   </application>
 

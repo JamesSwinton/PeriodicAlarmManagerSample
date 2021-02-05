@@ -28,6 +28,6 @@ public class AlarmHelper {
 
         // Set Alarm using Pending Intent
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                SystemClock.elapsedRealtime() + 120000, pendingIntent);
+                SystemClock.elapsedRealtime() + 60000, pendingIntent);
     }
 }
