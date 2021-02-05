@@ -19,8 +19,8 @@ public class PermissionsHelper {
     };
 
     // Variables
-    private Activity mActivity;
-    private OnPermissionsResultListener mOnPermissionsResultListener;
+    private final Activity mActivity;
+    private final OnPermissionsResultListener mOnPermissionsResultListener;
 
     // Interfaces
     public interface OnPermissionsResultListener {
