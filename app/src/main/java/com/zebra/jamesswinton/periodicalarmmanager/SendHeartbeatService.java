@@ -8,6 +8,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
@@ -26,10 +27,16 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-public class SendHeartbeatService extends Service {
+public class SendHeartbeatService extends Service implements LocationListener {
 
     // Debugging
     private static final String TAG = "SendHeartbeatService";
+
+    // Consts
+    private static final long ONE_MIN_DELAY = 60000;
+
+    // Handler
+    private static final Handler mHandler = new Handler();
 
     // WakeLock Holder
     private PowerManager.WakeLock mWakeLock = null;
@@ -37,6 +44,9 @@ public class SendHeartbeatService extends Service {
     // Log File
     private final File mLogFile = new File(Environment.getExternalStorageDirectory()
             + File.separator + "PeriodicAlarmManagerTest" + File.separator + "log.txt");
+
+    // Holder
+    private static boolean mLocationFound = false;
 
     @Override
     public void onCreate() {
@@ -97,24 +107,53 @@ public class SendHeartbeatService extends Service {
         maxCriteria.setPowerRequirement(Criteria.POWER_HIGH);
         String bestLocationProvider = locationManager.getBestProvider(maxCriteria, true);
 
-        // Get Location
+        // Get Max Location
         Log.i(TAG, "Best provider found: " + bestLocationProvider + " - Acquiring location");
-        locationManager.requestSingleUpdate(bestLocationProvider, new LocationListener() {
-            @Override
-            public void onLocationChanged(@NonNull Location location) {
-                // Log Location
-                Log.i(TAG, "Location obtained, logging location");
-                logLocationToFile(location);
+        locationManager.requestSingleUpdate(bestLocationProvider, this, null);
 
-                // Reset Alarm
-                Log.i(TAG, "Location logged, re-scheduling alarm");
-                AlarmHelper.setAlarm(SendHeartbeatService.this);
+        // Wait 1 minute, if no location is found, lets fall back to minCriteria
+        mHandler.postDelayed(() -> {
+            if (!mLocationFound) {
+                Log.i(TAG, "No provider found within one minute, reverting to min criteria");
 
-                // Close Service
-                Log.i(TAG, "Alarm rescheduled, quitting service");
-                stopSelf();
+                // Cancel Existing Updates
+                locationManager.removeUpdates(SendHeartbeatService.this);
+
+                // Get Best Provider from Min Criteria
+                Log.i(TAG, "Getting Min provider");
+                Criteria maxCriteria1 = new Criteria();
+                maxCriteria1.setAccuracy(Criteria.NO_REQUIREMENT);
+                maxCriteria1.setPowerRequirement(Criteria.NO_REQUIREMENT);
+                String minLocationProvider = locationManager.getBestProvider(maxCriteria1, true);
+
+                // Request update with lower constraints
+                Log.i(TAG, "Min provider found: " + minLocationProvider + " - Acquiring location");
+                locationManager.requestSingleUpdate(minLocationProvider,
+                    SendHeartbeatService.this, null);
             }
-        }, null);
+        }, ONE_MIN_DELAY);
+    }
+
+    @Override
+    public void onLocationChanged(@NonNull Location location) {
+        Log.i(TAG, "Location obtained, logging location");
+
+        // Cancel Handler Callbacks
+        mHandler.removeCallbacks(null);
+
+        // Set Holder
+        mLocationFound = true;
+
+        // Log Location
+        logLocationToFile(location);
+
+        // Reset Alarm
+        Log.i(TAG, "Location logged, re-scheduling alarm");
+        AlarmHelper.setAlarm(SendHeartbeatService.this);
+
+        // Close Service
+        Log.i(TAG, "Alarm rescheduled, quitting service");
+        stopSelf();
     }
 
     private void logToFile() {
@@ -131,7 +170,9 @@ public class SendHeartbeatService extends Service {
         try {
             double lat = location == null ? -1 : location.getLatitude();
             double lng = location == null ? -1 : location.getLongitude();
-            String logText = String.format(getString(R.string.log_location), lat, lng);
+            String logText = String.format(getString(R.string.log_location),
+                getCurrentTimeHumanReadable(), location.getProvider(),
+                location.getAccuracy(), lat, lng);
             FileUtils.writeStringToFile(mLogFile, logText, Charset.defaultCharset(), true);
         } catch (IOException e) {
             e.printStackTrace();

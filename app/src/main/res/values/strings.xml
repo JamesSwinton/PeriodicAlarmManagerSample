@@ -2,5 +2,5 @@
   <string name="app_name">PeriodicAlarmManager</string>
 
   <string name="log_alarm">Alarm + Service Triggered @ %1$s \n</string>
-  <string name="log_location">Location obtained | LAT: %1$f, LNG: %2$f \n</string>
+  <string name="log_location">Location obtained @ %1$s from Provider: %2$s (%3$f) | LAT: %4$f, LNG: %5$f \n</string>
 </resources>
